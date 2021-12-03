@@ -1,6 +1,6 @@
 """
-Cuidar do input dos usuários
 Display
+Handle user input
 """
 
 import pygame as p
@@ -8,7 +8,7 @@ from Chess import ChessEngine
 
 
 WIDTH = HEIGHT = 512
-DIMENSION = 8  # dimensão do tabuleiro
+DIMENSION = 8  # board dimension
 SQ_SIZE = HEIGHT // DIMENSION
 MAX_FPS = 15
 IMAGES = {}

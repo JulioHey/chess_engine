@@ -5,12 +5,16 @@ Vai guardar os movimentos
 """
 
 
-class GameState():
+class GameState:
+    """
+    Class responsable for keeping up informations about the actual gameState
+    Determine the valid moves
+    Keep info about old moves
+    """
     def __init__(self):
-        # board lista bidimensional 8x8,
-        # primeira letra a cor "b" ou "w"
-        # segunda o tipo da peça "R", "N", "B", "Q", "K" ou "P"
-        # "--" lugar vazio
+        """
+        board: bidimensional list of strings which represent the board
+        """
         self.board = [
             ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
             ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
@@ -21,5 +25,3 @@ class GameState():
             ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
             ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
         ]
-
-        self.white_to_move = True
