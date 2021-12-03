@@ -38,10 +38,31 @@ def main():
     load_images()
     running = True
 
+    square_selected = ()
+    player_clicks = []
+
     while running:
         for e in p.event.get():
             if e.type == p.QUIT:
                 running = False
+            elif e.type == p.MOUSEBUTTONDOWN:
+                location = p.mouse.get_pos()
+                column = location[0] // SQ_SIZE
+                row = location[1] // SQ_SIZE
+
+                if square_selected == (row, column):
+                    square_selected = ()
+                    player_clicks = []
+                else:
+                    square_selected = (row, column)
+                    player_clicks.append(square_selected)
+
+                    if len(player_clicks) == 2:
+                        move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
+                        game_state.make_move(move)
+                        square_selected = ()
+                        player_clicks = []
+
         draw_game_state(screen, game_state)
         clock.tick(MAX_FPS)
         p.display.flip()
