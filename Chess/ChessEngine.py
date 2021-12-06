@@ -11,13 +11,22 @@ class GameState:
         self.board = [
             ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
             ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
-            ["--", "--", "--", "--", "--", "--", "--", "--"],
-            ["--", "--", "--", "--", "--", "--", "--", "--"],
-            ["--", "--", "--", "--", "--", "--", "--", "--"],
-            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "wB", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "bB", "--", "--", "--", "--"],
+            ["--", "--", "--", "bB", "--", "--", "--", "--"],
+            ["--", "--", "--", "bB", "wB", "--", "--", "--"],
             ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
             ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
         ]
+
+        self.move_functions = {
+            'P': self.get_pawn_moves,
+            'R': self.get_rook_moves,
+            'N': self.get_knight_moves,
+            'K': self.get_king_moves,
+            'Q': self.get_queen_moves,
+            'B': self.get_bishop_moves,
+        }
 
         self.move_log = []
         self.white_turn = True
@@ -27,6 +36,180 @@ class GameState:
         self.board[move.end_row][move.end_column] = move.piece_moved
         self.move_log.append(move)
         self.white_turn = not self.white_turn
+
+    def rollback_move(self):
+        if len(self.move_log) != 0:
+            last_move = self.move_log.pop()
+            self.board[last_move.end_row][last_move.end_column] = last_move.piece_captured
+            self.board[last_move.start_row][last_move.start_column] = last_move.piece_moved
+            self.white_turn = not self.white_turn
+
+    def get_valid_moves(self):
+        possible_moves = []
+        for row in range(len(self.board)):
+            for column in range(len(self.board[row])):
+                turn = self.board[row][column][0]
+                if (turn == "w" and self.white_turn) or (turn == "b" and not self.white_turn):
+                    piece = self.board[row][column][1]
+                    self.move_functions[piece](row, column, possible_moves)
+
+        return possible_moves
+
+    def get_all_possible_moves(self):
+        return self.board
+
+    def get_pawn_moves(self, row, column, moves):
+        """
+        Check for possible moves for a pawn
+        :param row: int
+        :param column: int
+        :param moves: list of moves which will append possible moves
+        :return: void
+        """
+        # White moves
+        if self.white_turn:
+            # Front + 1
+            if row != 0:
+                if self.board[row - 1][column] == "--":
+                    moves.append(Move((row, column), (row - 1, column), self.board))
+                    # Front + 2
+                    if row == 6 and self.board[row - 2][column] == "--":
+                        moves.append(Move((row, column), (row - 2, column), self.board))
+                # Left capture
+                if column - 1 >= 0:
+                    # Check if other piece is from black
+                    if self.board[row - 1][column - 1][0] == "b":
+                        moves.append(Move((row, column), (row - 1, column - 1), self.board))
+                # Right capture
+                if column + 1 <= 7:
+                    # Check if other piece is from black
+                    if self.board[row - 1][column + 1][0] == "b":
+                        moves.append(Move((row, column), (row - 1, column + 1), self.board))
+        # Black moves
+        else:
+            # Front + 1
+            if row != 7:
+                if self.board[row + 1][column] == "--":
+                    moves.append(Move((row, column), (row + 1, column), self.board))
+                    # Front + 2
+                    if row == 1 and self.board[row + 2][column] == "--":
+                        moves.append(Move((row, column), (row + 2, column), self.board))
+                # Left capture
+                if column - 1 >= 0:
+                    # Check if other piece is from black
+                    if self.board[row + 1][column - 1][0] == "w":
+                        moves.append(Move((row, column), (row + 1, column - 1), self.board))
+                # Right capture
+                if column + 1 <= 7:
+                    # Check if other piece is from black
+                    if self.board[row + 1][column + 1][0] == "w":
+                        moves.append(Move((row, column), (row + 1, column + 1), self.board))
+
+    def get_rook_moves(self, row, column, moves):
+        """
+        Get all possible rookies move
+        :param row: int
+        :param column: int
+        :param moves: list of moves which will append possible moves
+        :return: void
+        """
+        # Possible moves
+        directions = ((-1, 0), (1, 0), (0, -1), (0, 1))
+        enemy_color = "b" if self.white_turn else "w"
+
+        for direction in directions:
+            for i in range(1, 8):
+                end_row = row + direction[0] * i
+                end_column = column + direction[1] * i
+                if 0 <= end_row <= 7 and 0 <= end_column <= 7:
+                    end_piece = self.board[end_row][end_column]
+                    if end_piece == "--":
+                        moves.append(Move((row, column), (end_row, end_column), self.board))
+                    # Find an enemy piece end
+                    elif end_piece[0] == enemy_color:
+                        moves.append(Move((row, column), (end_row, end_column), self.board))
+                        break
+                    # Find an ally piece end
+                    else:
+                        break
+                # End of board
+                else:
+                    break
+
+    def get_bishop_moves(self, row, column, moves):
+        """
+        Get all possible bishops moves
+        :param row: int
+        :param column: int
+        :param moves: list of moves which will append possible moves
+        :return: void
+        """
+        directions = ((-1, -1), (1, 1), (1, -1), (-1, 1))
+        enemy_color = "b" if self.white_turn else "w"
+
+        for direction in directions:
+            for i in range(1, 8):
+                end_row = row + direction[0] * i
+                end_column = column + direction[1] * i
+                if 0 <= end_row <= 7 and 0 <= end_column <= 7:
+                    end_piece = self.board[end_row][end_column]
+                    if end_piece == "--":
+                        moves.append(Move((row, column), (end_row, end_column), self.board))
+                    # Find an enemy piece end
+                    elif end_piece[0] == enemy_color:
+                        moves.append(Move((row, column), (end_row, end_column), self.board))
+                        break
+                    # Find an ally piece end
+                    else:
+                        break
+                # End of board
+                else:
+                    break
+
+    def get_knight_moves(self, row, column, moves):
+        x_move = [2, 1, -1, -2, -2, -1, 1, 2]
+        y_move = [1, 2, 2, 1, -1, -2, -2, -1]
+
+        color = self.board[row][column][0]
+
+        for knight_move in range(8):
+            new_column = column + x_move[knight_move]
+            new_row = row + y_move[knight_move]
+
+            if 0 <= new_column <= 7 and 0 <= new_row <= 7:
+                if self.board[new_row][new_column][0] != color:
+                    moves.append(Move((row, column), (new_row, new_column), self.board))
+
+    def get_queen_moves(self, row, column, moves):
+        """
+        Get all possible moves for the queen
+        :param row:
+        :param column:
+        :param moves:
+        :return:
+        """
+        self.get_rook_moves(row, column, moves)
+        self.get_bishop_moves(row, column, moves)
+
+    def get_king_moves(self, row, column, moves):
+        """
+        Get all possible moves for kings
+        :param row:
+        :param column:
+        :param moves:
+        :return:
+        """
+        color = self.board[row][column][0]
+        king_moves = ((1, 1), (1, 0), (0, 1), (-1, 1), (-1, -1), (1, -1), (0, -1), (-1, 0))
+        for move in king_moves:
+            new_row = row + move[0]
+            new_column = column + move[1]
+
+            if 0 <= new_row <= 7 and 0 <= new_column <= 7:
+                if self.board[new_row][new_column][0] != color:
+                    moves.append(Move((row, column), (new_row, new_column), self.board))
+
+
 
 
 class Move:
@@ -63,6 +246,12 @@ class Move:
         self.end_column = end_square[1]
         self.piece_moved = board[self.start_row][self.start_column]
         self.piece_captured = board[self.end_row][self.end_column]
+        self.move_ID = self.start_row * 1000 + self.start_column * 100 + self.end_row * 10 + self.end_column;
+
+    def __eq__(self, other):
+        if isinstance(other, Move):
+            return self.move_ID == other.move_ID
+        return False
 
     def get_chess_notation(self):
         return self.get_rank_file(self.start_row, self.start_column) + self.get_rank_file(self.end_row, self.end_column)

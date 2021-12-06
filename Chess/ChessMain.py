@@ -26,15 +26,17 @@ def load_images():
 
 def main():
     """
-    :return: void
-
     Main Loop in game, initialize all variables and gameState
+     :return: void
     """
     p.init()
     screen = p.display.set_mode((HEIGHT, WIDTH))
     clock = p.time.Clock()
     screen.fill(p.Color("white"))
     game_state = ChessEngine.GameState()
+    valid_moves = game_state.get_valid_moves()
+    move_made = True
+
     load_images()
     running = True
 
@@ -50,7 +52,7 @@ def main():
                 column = location[0] // SQ_SIZE
                 row = location[1] // SQ_SIZE
 
-                if square_selected == (row, column):
+                if square_selected == (row, column) or (not player_clicks and game_state.board[row][column] == "--"):
                     square_selected = ()
                     player_clicks = []
                 else:
@@ -59,22 +61,37 @@ def main():
 
                     if len(player_clicks) == 2:
                         move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
-                        game_state.make_move(move)
-                        square_selected = ()
-                        player_clicks = []
+                        if move in valid_moves:
+                            game_state.make_move(move)
+                            move_made = True
+                            square_selected = ()
+                            player_clicks = []
+                        else:
+                            player_clicks = [square_selected]
+            elif e.type == p.KEYDOWN and e.key == p.K_LEFT:
+                game_state.rollback_move()
+                move_made = True
 
-        draw_game_state(screen, game_state)
+        if move_made:
+            valid_moves = game_state.get_valid_moves()
+            move_made = False
+
+        draw_game_state(screen, game_state, square_selected, valid_moves)
         clock.tick(MAX_FPS)
         p.display.flip()
 
 
-def draw_game_state(screen, game_state):
+def draw_game_state(screen, game_state, square_selected, valid_moves):
     """
     :param screen: p.screen
     :param game_state: GameState()
+    :param square_selected: tuple of square
     :return:
     """
     draw_board(screen)
+    if square_selected:
+        draw_selected(screen, square_selected, p.Color(200, 0, 0, 1))
+        draw_possible_moves(screen, square_selected, valid_moves)
     draw_pieces(screen, game_state.board)
 
 
@@ -103,6 +120,20 @@ def draw_pieces(screen, board):
 
             if piece != "--":
                 screen.blit(IMAGES[piece], (column * SQ_SIZE, row * SQ_SIZE))
+
+
+def draw_selected(screen, square, color):
+    p.draw.rect(screen, color, p.Rect(square[1] * SQ_SIZE, square[0] * SQ_SIZE, SQ_SIZE, SQ_SIZE))
+
+
+def draw_possible_move(screen, square, color):
+    p.draw.circle(screen, color, (SQ_SIZE // 2 + square[1] * SQ_SIZE, SQ_SIZE // 2 + square[0] * SQ_SIZE), SQ_SIZE // 2)
+
+
+def draw_possible_moves(screen, square, moves):
+    for move in moves:
+        if (move.start_row, move.start_column) == square:
+            draw_possible_move(screen, (move.end_row, move.end_column), p.Color(130, 130, 130))
 
 
 if __name__ == '__main__':
