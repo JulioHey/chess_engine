@@ -11,10 +11,10 @@ class GameState:
         self.board = [
             ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR"],
             ["bP", "bP", "bP", "bP", "bP", "bP", "bP", "bP"],
-            ["--", "--", "wB", "--", "--", "--", "--", "--"],
-            ["--", "--", "--", "bB", "--", "--", "--", "--"],
-            ["--", "--", "--", "bB", "--", "--", "--", "--"],
-            ["--", "--", "--", "bB", "wB", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["wP", "wP", "wP", "wP", "wP", "wP", "wP", "wP"],
             ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"],
         ]
@@ -31,11 +31,23 @@ class GameState:
         self.move_log = []
         self.white_turn = True
 
+        self.white_king = (7, 4)
+        self.black_king = (0, 4)
+
+        self.check_mate = False
+        self.stale_mate = False
+
     def make_move(self, move):
         self.board[move.start_row][move.start_column] = "--"
         self.board[move.end_row][move.end_column] = move.piece_moved
         self.move_log.append(move)
         self.white_turn = not self.white_turn
+
+        # Update kings location
+        if move.piece_moved == "wK":
+            self.white_king = (move.end_row, move.end_column)
+        elif move.piece_moved == "bK":
+            self.black_king = (move.end_row, move.end_column)
 
     def rollback_move(self):
         if len(self.move_log) != 0:
@@ -44,7 +56,62 @@ class GameState:
             self.board[last_move.start_row][last_move.start_column] = last_move.piece_moved
             self.white_turn = not self.white_turn
 
+            # Updates kings position
+            if last_move.piece_moved == "wK":
+                self.white_king = (last_move.start_row, last_move.start_column)
+            elif last_move.piece_moved == "bK":
+                self.black_king = (last_move.start_row, last_move.start_column)
+
     def get_valid_moves(self):
+        # generate all possible moves
+        moves = self.get_all_possible_moves()
+        # for each move make move
+        for move in moves[::-1]:
+            self.make_move(move)
+            self.white_turn = not self.white_turn
+            if self.in_check():
+                moves.remove(move)
+
+            # Undo stuff
+            self.white_turn = not self.white_turn
+            self.rollback_move()
+
+        if len(moves) == 0:
+            if self.in_check():
+                self.check_mate = True
+            else:
+                self.stale_mate = True
+        else:
+            self.check_mate = self.stale_mate = False
+        return moves
+
+    def in_check(self):
+        """
+        Determine if the current player is in check
+        :return: boolean
+        """
+        if self.white_turn:
+            return self.square_under_attack(self.white_king[0], self.white_king[1])
+        else:
+            return self.square_under_attack(self.black_king[0], self.black_king[1])
+
+
+    def square_under_attack(self, row, column):
+        """
+        Determine if the enemy can attack square (row, column)
+        :param row: int
+        :param column: int
+        :return: boolean
+        """
+        self.white_turn = not self.white_turn
+        opponent_moves = self.get_all_possible_moves()
+        self.white_turn = not self.white_turn
+        for move in opponent_moves:
+            if move.end_row == row and move.end_column == column:
+                return True
+        return False
+
+    def get_all_possible_moves(self):
         possible_moves = []
         for row in range(len(self.board)):
             for column in range(len(self.board[row])):
@@ -54,9 +121,6 @@ class GameState:
                     self.move_functions[piece](row, column, possible_moves)
 
         return possible_moves
-
-    def get_all_possible_moves(self):
-        return self.board
 
     def get_pawn_moves(self, row, column, moves):
         """
@@ -208,8 +272,6 @@ class GameState:
             if 0 <= new_row <= 7 and 0 <= new_column <= 7:
                 if self.board[new_row][new_column][0] != color:
                     moves.append(Move((row, column), (new_row, new_column), self.board))
-
-
 
 
 class Move:
